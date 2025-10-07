@@ -36,13 +36,11 @@
 
 ## Model Providers
 
-This template uses the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) to access multiple AI models through a unified interface. The default configuration includes [xAI](https://x.ai) models (`grok-2-vision-1212`, `grok-3-mini`) routed through the gateway.
+This template uses [OpenRouter](https://openrouter.ai) to access multiple AI models through a unified interface. The default configuration routes chat requests to OpenAI's `gpt-4.1-mini` and reasoning traces to `deepseek/deepseek-reasoner`, both served via OpenRouter.
 
-### AI Gateway Authentication
+### OpenRouter Authentication
 
-**For Vercel deployments**: Authentication is handled automatically via OIDC tokens.
-
-**For non-Vercel deployments**: You need to provide an AI Gateway API key by setting the `AI_GATEWAY_API_KEY` environment variable in your `.env.local` file.
+Set the `OPENROUTER_API_KEY` environment variable in your `.env.local` file (or via your deployment platform). Optional headers `OPENROUTER_SITE_URL` and `OPENROUTER_SITE_NAME` help attribute traffic to your app.
 
 With the [AI SDK](https://ai-sdk.dev/docs/introduction), you can also switch to direct LLM providers like [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://ai-sdk.dev/providers/ai-sdk-providers) with just a few lines of code.
 

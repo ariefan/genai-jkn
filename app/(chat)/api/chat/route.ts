@@ -1,5 +1,6 @@
 import { geolocation } from "@vercel/functions";
 import {
+  APICallError,
   convertToModelMessages,
   createUIMessageStream,
   JsonToSseTransformStream,
@@ -292,14 +293,25 @@ export async function POST(request: Request) {
       return error.toResponse();
     }
 
-    // Check for Vercel AI Gateway credit card error
+    // Check for OpenRouter authentication or billing errors
     if (
-      error instanceof Error &&
-      error.message?.includes(
-        "AI Gateway requires a valid credit card on file to service requests"
-      )
+      error instanceof APICallError &&
+      (error.statusCode === 401 || error.statusCode === 402)
     ) {
-      return new ChatSDKError("bad_request:activate_gateway").toResponse();
+      const rawBody = (error as { body?: unknown }).body;
+      const bodyError =
+        typeof rawBody === "object" && rawBody !== null && "error" in rawBody
+          ? (rawBody as { error?: { message?: unknown } }).error
+          : undefined;
+      const responseMessage =
+        bodyError && typeof bodyError.message === "string"
+          ? bodyError.message
+          : error.message;
+
+      return new ChatSDKError(
+        "bad_request:activate_gateway",
+        responseMessage
+      ).toResponse();
     }
 
     console.error("Unhandled error in chat API:", error, { vercelId });

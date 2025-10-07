@@ -107,10 +107,7 @@ export function Chat({
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {
-        // Check if it's a credit card error
-        if (
-          error.message?.includes("AI Gateway requires a valid credit card")
-        ) {
+        if (error.surface === "activate_gateway") {
           setShowCreditCardAlert(true);
         } else {
           toast({
@@ -221,11 +218,11 @@ export function Chat({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Activate AI Gateway</AlertDialogTitle>
+            <AlertDialogTitle>Activate OpenRouter</AlertDialogTitle>
             <AlertDialogDescription>
               This application requires{" "}
               {process.env.NODE_ENV === "production" ? "the owner" : "you"} to
-              activate Vercel AI Gateway.
+              configure a valid OpenRouter API key and billing.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -233,7 +230,7 @@ export function Chat({
             <AlertDialogAction
               onClick={() => {
                 window.open(
-                  "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card",
+                  "https://openrouter.ai/keys",
                   "_blank"
                 );
                 window.location.href = "/";
