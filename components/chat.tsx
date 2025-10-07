@@ -33,6 +33,23 @@ import { getChatHistoryPaginationKey } from "./sidebar-history";
 import { toast } from "./toast";
 import type { VisibilityType } from "./visibility-selector";
 
+function getCookieValue(cookieName: string) {
+  if (typeof document === "undefined") {
+    return undefined;
+  }
+
+  const cookies = document.cookie.split("; ");
+
+  for (const cookie of cookies) {
+    const [name, ...valueParts] = cookie.split("=");
+    if (name === cookieName) {
+      return decodeURIComponent(valueParts.join("="));
+    }
+  }
+
+  return undefined;
+}
+
 export function Chat({
   id,
   initialMessages,
@@ -85,13 +102,18 @@ export function Chat({
       api: "/api/chat",
       fetch: fetchWithErrorHandlers,
       prepareSendMessagesRequest(request) {
+        const selectedParticipantId = getCookieValue(
+          "selected-participant-id"
+        );
+
         return {
           body: {
+            ...request.body,
             id: request.id,
             message: request.messages.at(-1),
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
-            ...request.body,
+            selectedParticipantId: selectedParticipantId ?? undefined,
           },
         };
       },

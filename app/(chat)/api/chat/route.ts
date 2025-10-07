@@ -8,6 +8,7 @@ import {
   stepCountIs,
   streamText,
 } from "ai";
+import { cookies } from "next/headers";
 import { unstable_cache as cache } from "next/cache";
 import { after } from "next/server";
 import {
@@ -24,6 +25,7 @@ import type { ChatModel } from "@/lib/ai/models";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { myProvider } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
+import { createGetBillingStatusTool } from "@/lib/ai/tools/get-billing-status";
 import { getWeather } from "@/lib/ai/tools/get-weather";
 import { requestSuggestions } from "@/lib/ai/tools/request-suggestions";
 import { updateDocument } from "@/lib/ai/tools/update-document";
@@ -101,11 +103,13 @@ export async function POST(request: Request) {
       message,
       selectedChatModel,
       selectedVisibilityType,
+      selectedParticipantId: selectedParticipantIdFromBody,
     }: {
       id: string;
       message: ChatMessage;
       selectedChatModel: ChatModel["id"];
       selectedVisibilityType: VisibilityType;
+      selectedParticipantId?: string;
     } = requestBody;
 
     const session = await auth();
@@ -174,6 +178,13 @@ export async function POST(request: Request) {
 
     let finalMergedUsage: AppUsage | undefined;
 
+    const cookieStore = await cookies();
+    const selectedParticipantIdFromCookie =
+      cookieStore.get("selected-participant-id")?.value ?? null;
+
+    const selectedParticipantId =
+      selectedParticipantIdFromBody ?? selectedParticipantIdFromCookie ?? null;
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const result = streamText({
@@ -186,6 +197,7 @@ export async function POST(request: Request) {
               ? []
               : [
                   "getWeather",
+                  "getBillingStatus",
                   "createDocument",
                   "updateDocument",
                   "requestSuggestions",
@@ -193,6 +205,9 @@ export async function POST(request: Request) {
           experimental_transform: smoothStream({ chunking: "word" }),
           tools: {
             getWeather,
+            getBillingStatus: createGetBillingStatusTool({
+              selectedParticipantId,
+            }),
             createDocument: createDocument({ session, dataStream }),
             updateDocument: updateDocument({ session, dataStream }),
             requestSuggestions: requestSuggestions({

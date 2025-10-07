@@ -142,13 +142,14 @@ export class ChatPage {
     const lastMessageElement = messageElements.at(-1);
 
     if (!lastMessageElement) {
-      return null;
+      throw new Error("No assistant message found");
     }
 
-    const content = await lastMessageElement
-      .getByTestId("message-content")
-      .innerText()
-      .catch(() => null);
+    const content =
+      (await lastMessageElement
+        .getByTestId("message-content")
+        .innerText()
+        .catch(() => null)) ?? "";
 
     const reasoningElement = await lastMessageElement
       .getByTestId("message-reasoning")

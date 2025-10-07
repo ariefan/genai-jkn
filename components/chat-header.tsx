@@ -5,17 +5,11 @@ import { memo } from "react";
 import { useWindowSize } from "usehooks-ts";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { cn } from "@/lib/utils";
-import { PlusIcon, SettingsIcon, ChevronDownIcon } from "./icons";
+import { PlusIcon } from "./icons";
 import { useSidebar } from "./ui/sidebar";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
 import { SettingMenu } from "./setting-menu";
+import { ParticipantSelector } from "./participant-selector";
 
 function PureChatHeader({
   chatId,
@@ -56,8 +50,10 @@ function PureChatHeader({
             className="order-1 md:order-2"
             selectedVisibilityType={selectedVisibilityType}
           />
-          <SettingMenu
-            className="order-1 md:order-2" />
+          <div className="order-1 flex items-center gap-2 md:order-2">
+            <SettingMenu />
+            <ParticipantSelector />
+          </div>
         </>
       )}
     </header>

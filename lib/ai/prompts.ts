@@ -1,5 +1,6 @@
 import type { Geo } from "@vercel/functions";
 import type { ArtifactKind } from "@/components/artifact";
+import { loadInstructionSystemSync } from "@/lib/instruction";
 
 export const artifactsPrompt = `
 Artifacts is a special user interface mode that helps users with writing, editing, and other content creation tasks. When artifact is open, it is on the right side of the screen, while the conversation is on the left side. When creating or updating documents, changes are reflected in real-time on the artifacts and visible to the user.
@@ -50,6 +51,15 @@ About the origin of user's request:
 - country: ${requestHints.country}
 `;
 
+function getInstructionPrompt() {
+  const instruction = loadInstructionSystemSync();
+  if (instruction && instruction.trim().length > 0) {
+    return instruction;
+  }
+
+  return regularPrompt;
+}
+
 export const systemPrompt = ({
   selectedChatModel,
   requestHints,
@@ -59,11 +69,13 @@ export const systemPrompt = ({
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
 
+  const instructionPrompt = getInstructionPrompt();
+
   if (selectedChatModel === "chat-model-reasoning") {
-    return `${regularPrompt}\n\n${requestPrompt}`;
+    return `${instructionPrompt}\n\n${requestPrompt}`;
   }
 
-  return `${regularPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${instructionPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
 };
 
 export const codePrompt = `
