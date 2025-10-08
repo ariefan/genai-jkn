@@ -63,19 +63,26 @@ function getInstructionPrompt() {
 export const systemPrompt = ({
   selectedChatModel,
   requestHints,
+  billingContext,
 }: {
   selectedChatModel: string;
   requestHints: RequestHints;
+  billingContext?: string;
 }) => {
   const requestPrompt = getRequestPromptFromHints(requestHints);
 
   const instructionPrompt = getInstructionPrompt();
 
-  if (selectedChatModel === "chat-model-reasoning") {
-    return `${instructionPrompt}\n\n${requestPrompt}`;
+  let contextPrompt = "";
+  if (billingContext) {
+    contextPrompt = `\n\n## DATA TAGIHAN PESERTA\nBerikut adalah data tagihan untuk peserta yang dipilih:\n${billingContext}\n\nGunakan data di atas untuk menjawab pertanyaan peserta tentang status pembayaran mereka.`;
   }
 
-  return `${instructionPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  if (selectedChatModel === "chat-model-reasoning") {
+    return `${instructionPrompt}${contextPrompt}\n\n${requestPrompt}`;
+  }
+
+  return `${instructionPrompt}${contextPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
 };
 
 export const codePrompt = `

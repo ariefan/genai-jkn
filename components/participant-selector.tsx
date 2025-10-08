@@ -62,13 +62,19 @@ export function ParticipantSelector(props: ParticipantSelectorProps) {
   const { className } = props;
 
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [selectedNomorPeserta, setSelectedNomorPeserta] = useState<
-    string | undefined
-  >(() => getCookieValue(SELECTED_PARTICIPANT_ID_COOKIE));
+  const [selectedNomorPeserta, setSelectedNomorPeserta] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Hydration effect - runs only on client
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   useEffect(() => {
+    if (!isHydrated) return;
+
     const controller = new AbortController();
 
     async function loadParticipants() {
@@ -93,7 +99,7 @@ export function ParticipantSelector(props: ParticipantSelectorProps) {
         setParticipants(fetchedParticipants);
 
         if (fetchedParticipants.length === 0) {
-          setSelectedNomorPeserta(undefined);
+          setSelectedNomorPeserta("");
           return;
         }
 
@@ -124,7 +130,7 @@ export function ParticipantSelector(props: ParticipantSelectorProps) {
     loadParticipants();
 
     return () => controller.abort();
-  }, []);
+  }, [isHydrated]);
 
   const handleSelectionChange = (nomorPeserta: string) => {
     setSelectedNomorPeserta(nomorPeserta);
@@ -145,6 +151,17 @@ export function ParticipantSelector(props: ParticipantSelectorProps) {
     }
     return "Pilih peserta";
   }, [error, isLoading]);
+
+  // Prevent hydration mismatch by not rendering until client-side
+  if (!isHydrated) {
+    return (
+      <div className={cn("min-w-[180px]", className)}>
+        <div className="h-8 w-full min-w-[180px] rounded-md border border-input bg-background px-3 py-2 text-sm">
+          Memuat peserta...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn("min-w-[180px]", className)}>

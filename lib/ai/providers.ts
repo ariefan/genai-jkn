@@ -48,7 +48,7 @@ export const myProvider = isTestEnvironment
           middleware: extractReasoningMiddleware({ tagName: "think" }),
         }),
         "title-model": openRouter.chat(
-          "deepseek/deepseek-chat-v3.1:free"
+          "meta-llama/llama-3.3-70b-instruct:free"
         ),
         "artifact-model": openRouter.chat("openai/gpt-4.1-mini"),
         "chat-model-gemma-3n-e2b":

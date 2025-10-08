@@ -185,15 +185,40 @@ export async function POST(request: Request) {
     const selectedParticipantId =
       selectedParticipantIdFromBody ?? selectedParticipantIdFromCookie ?? null;
 
+    console.log("[DEBUG] Selected chat model:", selectedChatModel);
+
+    const modelInstance = myProvider.languageModel(selectedChatModel);
+    console.log("[DEBUG] Model instance:", modelInstance?.modelId || "NOT FOUND");
+
+    // Fetch billing data for the selected participant to inject into prompt
+    let billingContext: string | undefined;
+    if (selectedParticipantId && selectedChatModel === "chat-model-llama-3_3-70b") {
+      const { readBillingData } = await import("@/lib/billing");
+      const billingData = await readBillingData();
+      const participantRecords = billingData.data_tagihan.filter(
+        (record) => record.nomor_peserta === selectedParticipantId
+      );
+
+      if (participantRecords.length > 0) {
+        const formattedRecords = participantRecords.map((r) =>
+          `Bulan ${r.bulan} ${r.tahun}: ${r.status_pembayaran} (Jatuh tempo: ${r.jatuh_tempo}, Jumlah: Rp${r.jumlah_iuran.toLocaleString()})${r.kanal_pembayaran ? `, Dibayar via: ${r.kanal_pembayaran}` : ""}`
+        ).join("\n");
+
+        const firstRecord = participantRecords[0];
+        billingContext = `Nama: ${firstRecord.nama_peserta}\nNomor Peserta: ${firstRecord.nomor_peserta}\n\nRiwayat Tagihan:\n${formattedRecords}`;
+      }
+    }
+
     const stream = createUIMessageStream({
       execute: ({ writer: dataStream }) => {
         const result = streamText({
-          model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
+          model: modelInstance,
+          system: systemPrompt({ selectedChatModel, requestHints, billingContext }),
           messages: convertToModelMessages(uiMessages),
           stopWhen: stepCountIs(5),
           experimental_activeTools:
-            selectedChatModel === "chat-model-reasoning"
+            selectedChatModel === "chat-model-reasoning" ||
+            selectedChatModel === "chat-model-llama-3_3-70b"
               ? []
               : [
                   "getWeather",
