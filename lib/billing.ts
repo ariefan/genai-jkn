@@ -20,6 +20,7 @@ export type BillingRecord = {
   status_pembayaran: string;
   tanggal_pembayaran: string | null;
   kanal_pembayaran: string | null;
+  jumlah_iuran: number;
 };
 
 export type BillingData = {
