@@ -79,11 +79,19 @@ export function Chat({
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
+  const [chatError, setChatError] = useState<string | null>(null);
   const currentModelIdRef = useRef(currentModelId);
 
   useEffect(() => {
     currentModelIdRef.current = currentModelId;
   }, [currentModelId]);
+
+  // Clear error when user starts typing a new message
+  useEffect(() => {
+    if (input.trim() && chatError) {
+      setChatError(null);
+    }
+  }, [input, chatError]);
 
   const {
     messages,
@@ -128,15 +136,49 @@ export function Chat({
       mutate(unstable_serialize(getChatHistoryPaginationKey));
     },
     onError: (error) => {
+      console.error("Chat error:", error);
+
+      // Clear any previous error when new error occurs
+      setChatError(null);
+
       if (error instanceof ChatSDKError) {
         if (error.surface === "activate_gateway") {
           setShowCreditCardAlert(true);
         } else {
+          setChatError(error.message);
           toast({
             type: "error",
             description: error.message,
           });
         }
+      } else {
+        // Handle enhanced error types from fetchWithErrorHandlers
+        let errorMessage = "An unexpected error occurred. Please try again.";
+
+        // Check for custom error flags
+        if ((error as any).isRateLimit) {
+          errorMessage = "⚠️ **Rate Limit Exceeded**\n\nYou've reached the daily request limit for this AI model. Please switch to a different model using the dropdown selector above.\n\nAlternative models available:\n• DeepSeek V3.1 (recommended)\n• Gemma 3n 2B\n• GPT-OSS 20B\n• LongCat Flash Chat";
+        } else if ((error as any).isServiceUnavailable) {
+          errorMessage = "⚠️ **Service Unavailable**\n\nThe AI service is temporarily unavailable. Please try again in a few moments or switch to a different model.";
+        } else if (error.message) {
+          if (error.message.includes("Rate limit exceeded")) {
+            errorMessage = "⚠️ **Rate Limit Exceeded**\n\nYou've reached the daily request limit for this AI model. Please switch to a different model using the dropdown selector above.\n\nAlternative models available:\n• DeepSeek V3.1 (recommended)\n• Gemma 3n 2B\n• GPT-OSS 20B\n• LongCat Flash Chat";
+          } else if (error.message.includes("429")) {
+            errorMessage = "⚠️ **Too Many Requests**\n\nPlease wait a moment before sending another message, or try switching to a different AI model.";
+          } else if (error.message.includes("503")) {
+            errorMessage = "⚠️ **Service Unavailable**\n\nThe AI service is temporarily unavailable. Please try again in a few moments or switch to a different model.";
+          } else if (error.message.includes("network") || error.message.includes("fetch")) {
+            errorMessage = "⚠️ **Network Error**\n\nUnable to connect to the AI service. Please check your internet connection and try again.";
+          } else {
+            errorMessage = `⚠️ **Error**\n\n${error.message}`;
+          }
+        }
+
+        setChatError(errorMessage);
+        toast({
+          type: "error",
+          description: errorMessage.includes("**") ? errorMessage.replace(/\*\*/g, "") : errorMessage,
+        });
       }
     },
   });
@@ -148,6 +190,8 @@ export function Chat({
 
   useEffect(() => {
     if (query && !hasAppendedQuery) {
+      // Clear any existing errors when sending a new message
+      setChatError(null);
       sendMessage({
         role: "user" as const,
         parts: [{ type: "text", text: query }],
@@ -192,6 +236,8 @@ export function Chat({
           setMessages={setMessages}
           status={status}
           votes={votes}
+          chatError={chatError}
+          onClearError={() => setChatError(null)}
         />
 
         <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
@@ -219,9 +265,11 @@ export function Chat({
       <Artifact
         attachments={attachments}
         chatId={id}
+        chatError={chatError}
         input={input}
         isReadonly={isReadonly}
         messages={messages}
+        onClearError={() => setChatError(null)}
         regenerate={regenerate}
         selectedModelId={currentModelId}
         selectedVisibilityType={visibilityType}

@@ -42,15 +42,17 @@ export const myProvider = isTestEnvironment
     })()
   : customProvider({
       languageModels: {
-        "chat-model": openRouter.chat("openai/gpt-4.1-mini"),
+        "chat-model": openRouter.chat("mistralai/mistral-7b-instruct:deepinfra/bf16"),
         "chat-model-reasoning": wrapLanguageModel({
           model: openRouter.chat("deepseek/deepseek-reasoner"),
           middleware: extractReasoningMiddleware({ tagName: "think" }),
         }),
         "title-model": openRouter.chat(
-          "meta-llama/llama-3.3-70b-instruct:free"
+          "mistralai/mistral-7b-instruct:deepinfra/bf16"
         ),
         "artifact-model": openRouter.chat("openai/gpt-4.1-mini"),
+        "chat-model-mistral-7b":
+          openRouter.chat("mistralai/mistral-7b-instruct:deepinfra/bf16"),
         "chat-model-gemma-3n-e2b":
           openRouter.chat("google/gemma-3n-e2b-it:free"),
         "chat-model-gpt-oss-20b":

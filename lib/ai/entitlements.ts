@@ -15,6 +15,7 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
     availableChatModelIds: [
       "chat-model",
       "chat-model-reasoning",
+      "chat-model-mistral-7b",
       "chat-model-gemma-3n-e2b",
       "chat-model-gpt-oss-20b",
       "chat-model-deepseek-v31",
@@ -31,6 +32,7 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
     availableChatModelIds: [
       "chat-model",
       "chat-model-reasoning",
+      "chat-model-mistral-7b",
       "chat-model-gemma-3n-e2b",
       "chat-model-gpt-oss-20b",
       "chat-model-deepseek-v31",

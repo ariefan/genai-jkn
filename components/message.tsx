@@ -24,6 +24,7 @@ import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
 import { Weather } from "./weather";
+import { AIAvatar } from "./ai-avatar";
 
 const PurePreviewMessage = ({
   chatId,
@@ -67,9 +68,10 @@ const PurePreviewMessage = ({
         })}
       >
         {message.role === "assistant" && (
-          <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-background ring-1 ring-border">
-            <SparklesIcon size={14} />
-          </div>
+          <AIAvatar
+            isSpeaking={isLoading}
+            text={message.parts.find(p => p.type === "text")?.text}
+          />
         )}
 
         <div
@@ -321,9 +323,7 @@ export const ThinkingMessage = () => {
       initial={{ opacity: 0 }}
     >
       <div className="flex items-start justify-start gap-3">
-        <div className="-mt-1 flex size-8 shrink-0 items-center justify-center rounded-full bg-background ring-1 ring-border">
-          <SparklesIcon size={14} />
-        </div>
+        <AIAvatar isThinking={true} />
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
           <div className="p-0 text-muted-foreground text-sm">

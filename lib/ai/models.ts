@@ -1,4 +1,4 @@
-export const DEFAULT_CHAT_MODEL: string = "chat-model-llama-3_3-70b";
+export const DEFAULT_CHAT_MODEL: string = "chat-model-mistral-7b";
 
 export type ChatModel = {
   id: string;
@@ -7,6 +7,12 @@ export type ChatModel = {
 };
 
 export const chatModels: ChatModel[] = [
+  {
+    id: "chat-model-mistral-7b",
+    name: "Mistral 7B (OpenRouter)",
+    description:
+      "Mistral AI's 7B parameter model with DeepInfra BF16 optimization - high quality responses",
+  },
   {
     id: "chat-model-llama-3_3-70b",
     name: "Llama 3.3 70B (OpenRouter)",

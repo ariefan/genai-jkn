@@ -22,7 +22,9 @@ export async function GET(request: Request) {
   const chat = await getChatById({ id: chatId });
 
   if (!chat) {
-    return new ChatSDKError("not_found:chat").toResponse();
+    // Return empty votes array if chat doesn't exist (offline mode)
+    console.log(`Chat ${chatId} not found, returning empty votes array`);
+    return Response.json([], { status: 200 });
   }
 
   if (chat.userId !== session.user.id) {
@@ -58,7 +60,9 @@ export async function PATCH(request: Request) {
   const chat = await getChatById({ id: chatId });
 
   if (!chat) {
-    return new ChatSDKError("not_found:vote").toResponse();
+    // Return success but log that chat wasn't found (offline mode)
+    console.log(`Chat ${chatId} not found, skipping vote operation`);
+    return new Response("Message voted (offline mode)", { status: 200 });
   }
 
   if (chat.userId !== session.user.id) {

@@ -1,0 +1,28 @@
+{
+  "env": {
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.5-air",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.6"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(curl -X POST \"https://openrouter.ai/api/v1/chat/completions\" )",
+      "Bash(npm run dev:*)",
+      "Bash(pnpm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(awk:*)",
+      "Bash(taskkill:*)",
+      "Bash(pnpm add:*)",
+      "Bash(npx tsc:*)",
+      "Bash(pnpm remove:*)",
+      "Bash(findstr:*)",
+      "Bash(pnpm dev)",
+      "Bash(node:*)",
+      "Bash(ping:*)",
+      "Bash(curl:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

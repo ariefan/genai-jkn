@@ -34,7 +34,34 @@ export async function fetchWithErrorHandlers(
     const response = await fetch(input, init);
 
     if (!response.ok) {
-      const { code, cause } = await response.json();
+      // Try to parse error response
+      let errorData;
+      try {
+        errorData = await response.json();
+      } catch {
+        // If JSON parsing fails, create a generic error
+        throw new ChatSDKError('bad_request:network', `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      // Handle rate limit errors specifically
+      if (response.status === 429 || errorData?.error?.message?.includes('Rate limit exceeded')) {
+        const rateLimitError = new Error(errorData?.error?.message || 'Rate limit exceeded');
+        // Add original error data for better handling
+        (rateLimitError as any).originalError = errorData;
+        (rateLimitError as any).isRateLimit = true;
+        throw rateLimitError;
+      }
+
+      // Handle service unavailable errors (503)
+      if (response.status === 503) {
+        const serviceError = new Error(errorData?.error?.message || 'Service temporarily unavailable');
+        (serviceError as any).originalError = errorData;
+        (serviceError as any).isServiceUnavailable = true;
+        throw serviceError;
+      }
+
+      // For other errors, use the existing ChatSDKError logic
+      const { code, cause } = errorData;
       throw new ChatSDKError(code as ErrorCode, cause);
     }
 
