@@ -13,7 +13,7 @@ interface AIAvatar3DProps {
   fullBackground?: boolean;
 }
 
-// 3D Avatar Model Component with skeletal animations
+// 3D Avatar Model Component with breathing idle animation
 function Avatar3DModel({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking: boolean }) {
   const modelRef = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
@@ -23,213 +23,137 @@ function Avatar3DModel({ isSpeaking, isThinking }: { isSpeaking: boolean; isThin
   const shoulderLeftRef = useRef<THREE.Bone | null>(null);
   const shoulderRightRef = useRef<THREE.Bone | null>(null);
 
-  // Random movement state
-  const randomMovementRef = useRef({
-    headTurnTarget: 0,
-    headNodTarget: 0,
-    shoulderTiltTarget: 0,
-    nextChangeTime: 0,
-  });
-
-  // Load the GLB model from Ready Player Me
-  const avatarUrl = "https://models.readyplayer.me/68e71278fedc245300f49d27.glb";
-
-  const gltf = useLoader(GLTFLoader, avatarUrl);
+  // Load female model and animation separately
+  const femaleGltf = useLoader(GLTFLoader, "/data/female.glb");
+  const animationGltf = useLoader(GLTFLoader, "/data/breathing-idle.glb");
 
   useEffect(() => {
-    if (gltf) {
-      // Find bones for skeletal animation
-      gltf.scene.traverse((object) => {
-        if (object instanceof THREE.Bone || object.type === 'Bone') {
-          const boneName = object.name.toLowerCase();
+    if (femaleGltf && animationGltf) {
+      console.log('Female model loaded, applying breathing animation...');
 
-          // Ready Player Me bone naming convention
-          if ((boneName.includes('head') || boneName === 'head') && !headBoneRef.current) {
+      // Find bones in female model for potential procedural animation
+      femaleGltf.scene.traverse((object: any) => {
+        if (object instanceof THREE.Bone || object.type === 'Bone') {
+          const boneName = object.name;
+
+          // Ready Player Me bone naming (case-sensitive)
+          if (boneName === 'Head' && !headBoneRef.current) {
             headBoneRef.current = object as THREE.Bone;
             console.log('Found head bone:', object.name);
-          } else if ((boneName.includes('neck') || boneName === 'neck') && !neckBoneRef.current) {
+          } else if (boneName === 'Neck' && !neckBoneRef.current) {
             neckBoneRef.current = object as THREE.Bone;
             console.log('Found neck bone:', object.name);
-          } else if ((boneName.includes('spine') || boneName.includes('chest') || boneName === 'spine2') && !spineBoneRef.current) {
+          } else if ((boneName === 'Spine' || boneName === 'Spine1' || boneName === 'Spine2') && !spineBoneRef.current) {
             spineBoneRef.current = object as THREE.Bone;
             console.log('Found spine bone:', object.name);
-          } else if ((boneName.includes('leftshoulder') || boneName.includes('shoulder_l') || boneName === 'leftshoulder')) {
+          } else if (boneName === 'LeftShoulder' && !shoulderLeftRef.current) {
             shoulderLeftRef.current = object as THREE.Bone;
             console.log('Found left shoulder bone:', object.name);
-          } else if ((boneName.includes('rightshoulder') || boneName.includes('shoulder_r') || boneName === 'rightshoulder')) {
+          } else if (boneName === 'RightShoulder' && !shoulderRightRef.current) {
             shoulderRightRef.current = object as THREE.Bone;
             console.log('Found right shoulder bone:', object.name);
           }
         }
       });
 
-      // Setup animation mixer for built-in or Mixamo animations
-      if (gltf.animations && gltf.animations.length > 0) {
-        const mixer = new THREE.AnimationMixer(gltf.scene);
-        mixerRef.current = mixer;
+      // Set up animation mixer for female model
+      mixerRef.current = new THREE.AnimationMixer(femaleGltf.scene);
 
-        console.log('Found animations:', gltf.animations.map(a => a.name));
+      // Try to apply animation from breathing-idle.glb to female model
+      if (animationGltf.animations.length > 0) {
+        const animation = animationGltf.animations[0];
+        console.log('Available animation tracks in breathing-idle.glb:', animation.tracks.length);
 
-        // Play the first idle animation (usually the default pose)
-        const idleClip = gltf.animations[0];
-        const idleAction = mixer.clipAction(idleClip);
+        // Create a bone map for the female model
+        const boneMap: { [key: string]: THREE.Object3D } = {};
+        femaleGltf.scene.traverse((object) => {
+          if (object instanceof THREE.Bone || object.type === 'Bone') {
+            boneMap[object.name] = object;
+          }
+        });
 
-        idleAction.setLoop(THREE.LoopRepeat, Infinity);
-        idleAction.clampWhenFinished = false;
-        idleAction.play();
+        console.log('Available bones in female model:', Object.keys(boneMap));
 
-        // If there are additional animations, blend them
-        if (gltf.animations.length > 1) {
-          gltf.animations.slice(1).forEach((clip) => {
-            const action = mixer.clipAction(clip);
-            action.setEffectiveWeight(0.2); // Subtle blend
-            action.play();
+        // Try to apply animation with proper bone mapping
+        try {
+          // Create a new animation clip that targets the female model bones
+          const retargetedTracks: THREE.KeyframeTrack[] = [];
+
+          animation.tracks.forEach((track) => {
+            const trackName = track.name;
+
+            // Handle mixamo bone naming (mixamorigHips.position -> Hips.position)
+            if (trackName.startsWith('mixamorig')) {
+              const mixamoBoneName = trackName.replace('mixamorig', '');
+              const property = trackName.split('.').slice(1).join('.');
+
+              // Map common bone names
+              const boneNameMapping: { [key: string]: string } = {
+                'Hips': 'Hips',
+                'Spine': 'Spine',
+                'Spine1': 'Spine1',
+                'Spine2': 'Spine2',
+                'Neck': 'Neck',
+                'Head': 'Head',
+                'LeftShoulder': 'LeftShoulder',
+                'RightShoulder': 'RightShoulder',
+                'LeftArm': 'LeftArm',
+                'RightArm': 'RightArm',
+                'LeftForeArm': 'LeftForeArm',
+                'RightForeArm': 'RightForeArm'
+              };
+
+              const femaleBoneName = boneNameMapping[mixamoBoneName];
+
+              if (femaleBoneName && boneMap[femaleBoneName]) {
+                // Create a new track that targets the female model bone
+                const newTrackName = `${femaleBoneName}.${property}`;
+                const newTrack = track.clone();
+                newTrack.name = newTrackName;
+                retargetedTracks.push(newTrack);
+              }
+            } else {
+              // If track doesn't start with mixamorig, try to use it directly
+              const parts = trackName.split('.');
+              const boneName = parts[0];
+              const property = parts.slice(1).join('.');
+
+              if (boneMap[boneName]) {
+                retargetedTracks.push(track);
+              }
+            }
           });
-        }
 
-        return () => {
-          mixer.stopAllAction();
-        };
-      } else {
-        console.log('No animations found in GLB model');
+          if (retargetedTracks.length > 0) {
+            const retargetedClip = new THREE.AnimationClip('breathing', animation.duration, retargetedTracks);
+            const action = mixerRef.current.clipAction(retargetedClip);
+            action.play();
+            console.log(`Successfully applied breathing animation with ${retargetedTracks.length} tracks to female model`);
+          } else {
+            console.log('No tracks could be retargeted, female model will be static');
+          }
+        } catch (error) {
+          console.error('Error applying animation:', error);
+          console.log('Female model will be displayed without animation');
+        }
       }
     }
-  }, [gltf]);
+  }, [femaleGltf, animationGltf]);
 
-  // Animate the model with lifelike movements
-  useFrame((state, delta) => {
-    const time = state.clock.elapsedTime;
-
-    // Update animation mixer - this is the main idle animation
+  // Update animation mixer on each frame
+  useFrame((_, delta) => {
     if (mixerRef.current) {
       mixerRef.current.update(delta);
     }
-
-    // Only apply subtle procedural animations if no built-in animations exist
-    const hasAnimations = gltf?.animations && gltf.animations.length > 0;
-
-    // Update random movement targets every 3-5 seconds (slower)
-    if (time > randomMovementRef.current.nextChangeTime) {
-      randomMovementRef.current.headTurnTarget = (Math.random() - 0.5) * 0.15; // Reduced from 0.4
-      randomMovementRef.current.headNodTarget = (Math.random() - 0.5) * 0.08; // Reduced from 0.2
-      randomMovementRef.current.shoulderTiltTarget = (Math.random() - 0.5) * 0.05; // Reduced from 0.15
-      randomMovementRef.current.nextChangeTime = time + 3 + Math.random() * 2;
-    }
-
-    if (modelRef.current) {
-      // Only apply these if there are NO built-in animations
-      if (!hasAnimations) {
-        // 1. BREATHING - very subtle
-        const breatheCycle = Math.sin(time * 0.8) * 0.01 + 1;
-        const breatheOffset = Math.sin(time * 0.8) * 0.003;
-        modelRef.current.scale.set(
-          1 + breatheOffset,
-          breatheCycle,
-          1 + breatheOffset
-        );
-
-        // 2. WEIGHT SHIFT - minimal
-        const weightShift = Math.sin(time * 0.4) * 0.01;
-        modelRef.current.position.x = weightShift;
-        modelRef.current.rotation.z = weightShift * 0.3;
-
-        // 3. IDLE ROTATION - very slow
-        const idleRotation = Math.sin(time * 0.15) * 0.08;
-        modelRef.current.rotation.y = idleRotation;
-
-        // 4. VERTICAL BREATHING MOVEMENT - subtle
-        const verticalBob = Math.sin(time * 0.8) * 0.005;
-        modelRef.current.position.y = -1.8 + verticalBob;
-      } else {
-        // With animations, just keep stable position
-        modelRef.current.position.y = -1.8;
-        modelRef.current.scale.set(1, 1, 1);
-        modelRef.current.rotation.z = 0;
-      }
-    }
-
-    // SKELETAL ANIMATIONS - Only apply if no built-in animations or when speaking/thinking
-    const shouldApplyBoneAnimation = !hasAnimations || isSpeaking || isThinking;
-
-    if (headBoneRef.current && shouldApplyBoneAnimation) {
-      const lerpSpeed = delta * 1.5; // Slightly slower
-
-      // Natural head movements
-      const currentHeadRotX = headBoneRef.current.rotation.x;
-      const currentHeadRotY = headBoneRef.current.rotation.y;
-      const currentHeadRotZ = headBoneRef.current.rotation.z;
-
-      if (isSpeaking) {
-        // Talking animation - jaw movement and head nods
-        const talkNod = Math.sin(time * 8) * 0.05; // Reduced from 0.08
-        const talkTurn = Math.sin(time * 5 + 1) * 0.03; // Reduced from 0.05
-        headBoneRef.current.rotation.x = THREE.MathUtils.lerp(currentHeadRotX, talkNod, lerpSpeed);
-        headBoneRef.current.rotation.y = THREE.MathUtils.lerp(currentHeadRotY, talkTurn, lerpSpeed);
-      } else if (isThinking) {
-        // Thinking pose - head tilt and slight up look
-        const thinkTilt = Math.sin(time * 0.6) * 0.08; // Reduced from 0.15
-        const thinkLookUp = 0.05; // Reduced from 0.1
-        headBoneRef.current.rotation.z = THREE.MathUtils.lerp(currentHeadRotZ, thinkTilt, lerpSpeed);
-        headBoneRef.current.rotation.x = THREE.MathUtils.lerp(currentHeadRotX, thinkLookUp, lerpSpeed);
-      } else if (!hasAnimations) {
-        // Only apply idle movements if there's no built-in animation
-        const microMovementX = Math.sin(time * 2.3) * 0.015; // Reduced from 0.03
-        const microMovementY = Math.sin(time * 1.7) * 0.01; // Reduced from 0.02
-
-        headBoneRef.current.rotation.x = THREE.MathUtils.lerp(
-          currentHeadRotX,
-          randomMovementRef.current.headNodTarget + microMovementX,
-          lerpSpeed
-        );
-        headBoneRef.current.rotation.y = THREE.MathUtils.lerp(
-          currentHeadRotY,
-          randomMovementRef.current.headTurnTarget + microMovementY,
-          lerpSpeed
-        );
-        headBoneRef.current.rotation.z = THREE.MathUtils.lerp(
-          currentHeadRotZ,
-          Math.sin(time * 0.9) * 0.025, // Reduced from 0.05
-          lerpSpeed
-        );
-      }
-    }
-
-    // Only apply subtle bone movements if no animations or in specific states
-    if (!hasAnimations || isSpeaking || isThinking) {
-      // NECK MOVEMENT - follows head but more subtle
-      if (neckBoneRef.current && headBoneRef.current) {
-        neckBoneRef.current.rotation.x = headBoneRef.current.rotation.x * 0.2; // Reduced from 0.3
-        neckBoneRef.current.rotation.y = headBoneRef.current.rotation.y * 0.3; // Reduced from 0.4
-        neckBoneRef.current.rotation.z = headBoneRef.current.rotation.z * 0.15; // Reduced from 0.2
-      }
-
-      // SPINE MOVEMENT - very subtle breathing
-      if (spineBoneRef.current && !hasAnimations) {
-        const spineBreathing = Math.sin(time * 0.8) * 0.01; // Reduced from 0.02
-        spineBoneRef.current.rotation.x = spineBreathing;
-
-        // Minimal spine sway
-        const spineSway = Math.sin(time * 0.5) * 0.008; // Reduced from 0.015
-        spineBoneRef.current.rotation.z = spineSway;
-      }
-
-      // SHOULDER MOVEMENT - only when speaking
-      if (shoulderLeftRef.current && shoulderRightRef.current && isSpeaking) {
-        const gestureLeft = Math.sin(time * 3) * 0.05; // Reduced from 0.08
-        const gestureRight = Math.sin(time * 3 + Math.PI) * 0.05;
-        shoulderLeftRef.current.rotation.x = gestureLeft;
-        shoulderRightRef.current.rotation.x = gestureRight;
-      }
-    }
   });
 
-  if (!gltf) {
+  if (!femaleGltf) {
     return <FallbackAvatar isSpeaking={isSpeaking} isThinking={isThinking} />;
   }
 
   return (
     <group ref={modelRef} position={[0, -1.8, 0]}>
-      <primitive object={gltf.scene} scale={1.6} />
+      <primitive object={femaleGltf.scene} scale={1.6} />
     </group>
   );
 }
