@@ -54,14 +54,14 @@ export const myProvider = isTestEnvironment
         "chat-model-mistral-7b":
           openRouter.chat("mistralai/mistral-7b-instruct:deepinfra/bf16"),
         "chat-model-gemma-3n-e2b":
-          openRouter.chat("google/gemma-3n-e2b-it:free"),
+          openRouter.chat("google/gemma-3n-e2b-it"),
         "chat-model-gpt-oss-20b":
-          openRouter.chat("openai/gpt-oss-20b:free"),
+          openRouter.chat("openai/gpt-oss-20b"),
         "chat-model-deepseek-v31":
-          openRouter.chat("deepseek/deepseek-chat-v3.1:free"),
+          openRouter.chat("deepseek/deepseek-chat-v3.1"),
         "chat-model-longcat-flash":
-          openRouter.chat("meituan/longcat-flash-chat:free"),
+          openRouter.chat("meituan/longcat-flash-chat"),
         "chat-model-llama-3_3-70b":
-          openRouter.chat("meta-llama/llama-3.3-70b-instruct:free"),
+          openRouter.chat("meta-llama/llama-3.3-70b-instruct"),
       },
     });

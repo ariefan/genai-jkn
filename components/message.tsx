@@ -80,14 +80,11 @@ const PurePreviewMessage = ({
               (p) => p.type === "text" && p.text?.trim()
             ),
             "min-h-96": message.role === "assistant" && requiresScrollPadding,
-            "w-full":
-              (message.role === "assistant" &&
-                message.parts?.some(
-                  (p) => p.type === "text" && p.text?.trim()
-                )) ||
-              mode === "edit",
+            "w-full": mode === "edit",
             "max-w-[calc(100%-2.5rem)] sm:max-w-[min(fit-content,80%)]":
               message.role === "user" && mode !== "edit",
+            "max-w-[calc(100%-2.5rem)] sm:max-w-[85%]":
+              message.role === "assistant" && mode !== "edit",
           })}
         >
           {attachmentsFromMessage.length > 0 && (
@@ -128,15 +125,15 @@ const PurePreviewMessage = ({
                   <div key={key}>
                     <MessageContent
                       className={cn({
-                        "w-fit break-words rounded-2xl px-3 py-2 text-right text-white":
+                        "w-fit break-words rounded-2xl px-3 py-2 text-right text-white bg-opacity-90":
                           message.role === "user",
-                        "bg-transparent px-0 py-0 text-left":
+                        "w-fit break-words rounded-2xl px-3 py-2 text-left border bg-background/70 text-foreground shadow-sm backdrop-blur-md":
                           message.role === "assistant",
                       })}
                       data-testid="message-content"
                       style={
                         message.role === "user"
-                          ? { backgroundColor: "#006cff" }
+                          ? { backgroundColor: "rgba(0, 108, 255, 0.9)" }
                           : undefined
                       }
                     >
@@ -325,8 +322,8 @@ export const ThinkingMessage = () => {
       <div className="flex items-start justify-start gap-3">
         <AIAvatar isThinking={true} />
 
-        <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">
+        <div className="flex w-full flex-col gap-2 md:gap-4 max-w-[85%]">
+          <div className="w-fit break-words rounded-2xl px-3 py-2 text-left border bg-background/70 text-foreground shadow-sm backdrop-blur-md">
             <LoadingText>Thinking...</LoadingText>
           </div>
         </div>

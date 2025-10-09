@@ -16,22 +16,47 @@ interface AIAvatar3DThreeProps {
 // 3D Avatar Head Component
 function AvatarHead({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const frameRef = useRef<number>();
 
-  // Animation states
+  // Continuous skeletal animation
   useEffect(() => {
-    if (meshRef.current) {
-      if (isSpeaking) {
-        // Speaking animation - slight nodding
-        meshRef.current.rotation.x = 0.1;
-      } else if (isThinking) {
-        // Thinking animation - slight head tilt
-        meshRef.current.rotation.z = 0.2;
-      } else {
-        // Idle state
-        meshRef.current.rotation.x = 0;
-        meshRef.current.rotation.z = 0;
+    const animate = () => {
+      if (meshRef.current) {
+        const time = Date.now() * 0.001; // Convert to seconds
+
+        // Breathing animation
+        const breathing = Math.sin(time * 0.8) * 0.05;
+
+        // Idle head movement
+        const headTurn = Math.sin(time * 0.3) * 0.1;
+        const headNod = Math.sin(time * 0.5) * 0.08;
+
+        // Combine animations
+        let rotationX = headNod;
+        let rotationZ = headTurn;
+
+        // Override with specific animations
+        if (isSpeaking) {
+          rotationX = headNod + 0.1; // Speaking nod
+        } else if (isThinking) {
+          rotationZ = headTurn + 0.2; // Thinking tilt
+        }
+
+        meshRef.current.rotation.x = rotationX;
+        meshRef.current.rotation.z = rotationZ;
+        meshRef.current.scale.y = 1 + breathing; // Breathing scale
       }
-    }
+
+      frameRef.current = requestAnimationFrame(animate);
+    };
+
+    animate();
+
+    return () => {
+      if (frameRef.current) {
+        cancelAnimationFrame(frameRef.current);
+      }
+    };
   }, [isSpeaking, isThinking]);
 
   return (
@@ -88,16 +113,47 @@ function AvatarHead({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinkin
 
 // Arm components
 function Arms({ isSpeaking }: { isSpeaking: boolean }) {
+  const leftArmRef = useRef<THREE.Mesh>(null);
+  const rightArmRef = useRef<THREE.Mesh>(null);
+
+  useEffect(() => {
+    const animate = () => {
+      if (leftArmRef.current && rightArmRef.current) {
+        const time = Date.now() * 0.001;
+
+        // Idle arm sway
+        const armSway = Math.sin(time * 0.7) * 0.1;
+
+        // Calculate arm rotations
+        let leftArmRotation = armSway;
+        let rightArmRotation = -armSway;
+
+        // Add speaking gestures
+        if (isSpeaking) {
+          leftArmRotation += Math.sin(time * 2) * 0.3;
+          rightArmRotation += Math.sin(time * 2 + Math.PI) * 0.3;
+        }
+
+        leftArmRef.current.rotation.z = leftArmRotation;
+        rightArmRef.current.rotation.z = rightArmRotation;
+      }
+
+      requestAnimationFrame(animate);
+    };
+
+    animate();
+  }, [isSpeaking]);
+
   return (
     <group>
       {/* Left Arm */}
-      <mesh position={[-1.5, 0, 0]} rotation={[0, 0, isSpeaking ? 0.5 : 0]}>
+      <mesh ref={leftArmRef} position={[-1.5, 0, 0]}>
         <boxGeometry args={[0.3, 2, 0.3]} />
         <meshStandardMaterial color="#fbbf24" />
       </mesh>
 
       {/* Right Arm */}
-      <mesh position={[1.5, 0, 0]} rotation={[0, 0, isSpeaking ? -0.5 : 0]}>
+      <mesh ref={rightArmRef} position={[1.5, 0, 0]}>
         <boxGeometry args={[0.3, 2, 0.3]} />
         <meshStandardMaterial color="#fbbf24" />
       </mesh>
