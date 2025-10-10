@@ -51,7 +51,7 @@ function Avatar3DModel({ isSpeaking, isThinking }: { isSpeaking: boolean; isThin
   useEffect(() => {
     const loader = new GLTFLoader();
     loader.load(
-      '/data/_breathing-idle.glb',
+      '/data/breathing-idle.glb',
       (gltf) => {
         if (gltf.animations.length > 0) {
           setMixamoAnimation(gltf.animations[0]);
