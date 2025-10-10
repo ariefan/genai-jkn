@@ -1,6 +1,5 @@
 import { Metadata } from "next";
-import { formatInstructionTimestamp } from "@/lib/date-format";
-import { parseInstructionPrompt, readInstructionFile } from "@/lib/instruction";
+import { readInstructionFile } from "@/lib/instruction";
 import { InstructionForm } from "./instruction-form";
 
 export const metadata: Metadata = {
@@ -8,11 +7,7 @@ export const metadata: Metadata = {
   description: "Kelola instruksi dasar untuk chatbot.",
 };
 
-const FALLBACK_CONTENT = `{
-  "system": "You are a friendly assistant!",
-  "few_shots": []
-}
-`;
+const FALLBACK_CONTENT = `You are a friendly assistant!`;
 
 export default async function InstructionPage() {
   let initialValue = FALLBACK_CONTENT;
@@ -22,17 +17,6 @@ export default async function InstructionPage() {
   try {
     const raw = await readInstructionFile();
     initialValue = raw;
-
-    try {
-      const parsed = parseInstructionPrompt(raw);
-      lastUpdatedAt = parsed.generated_at;
-      if (lastUpdatedAt) {
-        lastUpdatedLabel =
-          formatInstructionTimestamp(lastUpdatedAt) ?? lastUpdatedAt;
-      }
-    } catch (error) {
-      console.warn("Unable to parse instruction prompt metadata:", error);
-    }
   } catch (error) {
     console.warn("Unable to read instruction prompt, using fallback:", error);
   }

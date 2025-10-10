@@ -1,10 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import {
-  parseInstructionPrompt,
-  writeInstructionFile,
-} from "@/lib/instruction";
+import { writeInstructionFile } from "@/lib/instruction";
 
 export async function saveInstructionPrompt({
   content,
@@ -12,22 +9,13 @@ export async function saveInstructionPrompt({
   content: string;
 }) {
   try {
-    const parsed = parseInstructionPrompt(content);
-
-    const updated = {
-      ...parsed,
-      generated_at: new Date().toISOString(),
-    };
-
-    const formatted = `${JSON.stringify(updated, null, 2)}\n`;
-
-    await writeInstructionFile(formatted);
+    await writeInstructionFile(content);
     revalidatePath("/instruction");
 
     return {
       success: true as const,
-      content: formatted,
-      updatedAt: updated.generated_at,
+      content,
+      updatedAt: new Date().toISOString(),
     };
   } catch (error) {
     const message =
