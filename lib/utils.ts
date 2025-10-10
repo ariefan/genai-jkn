@@ -40,7 +40,7 @@ export async function fetchWithErrorHandlers(
         errorData = await response.json();
       } catch {
         // If JSON parsing fails, create a generic error
-        throw new ChatSDKError('bad_request:network', `HTTP ${response.status}: ${response.statusText}`);
+        throw new ChatSDKError('bad_request:api', `HTTP ${response.status}: ${response.statusText}`);
       }
 
       // Handle rate limit errors specifically

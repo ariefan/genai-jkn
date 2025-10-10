@@ -256,8 +256,8 @@ export function AIAvatar3DThree({
             animate={{ opacity: 1, y: 0 }}
             className="absolute bottom-10 left-1/2 -translate-x-1/2"
           >
-            <div className="rounded-full bg-green-500/20 px-4 py-2 backdrop-blur-sm">
-              <p className="text-sm text-green-300">Speaking...</p>
+            <div className="rounded-full bg-green-500/20 px-4 py-2 backdrop-blur-sm dark:bg-green-400/20">
+              <p className="text-sm text-green-300 dark:text-green-200">Speaking...</p>
             </div>
           </motion.div>
         )}
@@ -268,8 +268,8 @@ export function AIAvatar3DThree({
             animate={{ opacity: 1, y: 0 }}
             className="absolute bottom-10 left-1/2 -translate-x-1/2"
           >
-            <div className="rounded-full bg-blue-500/20 px-4 py-2 backdrop-blur-sm">
-              <p className="text-sm text-blue-300">Thinking...</p>
+            <div className="rounded-full bg-blue-500/20 px-4 py-2 backdrop-blur-sm dark:bg-blue-400/20">
+              <p className="text-sm text-blue-300 dark:text-blue-200">Thinking...</p>
             </div>
           </motion.div>
         )}

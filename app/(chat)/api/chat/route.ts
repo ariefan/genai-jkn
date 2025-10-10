@@ -192,20 +192,12 @@ export async function POST(request: Request) {
 
     // Fetch billing data for the selected participant to inject into prompt
     let billingContext: string | undefined;
-    if (selectedParticipantId && selectedChatModel === "chat-model-llama-3_3-70b") {
-      const { readBillingData } = await import("@/lib/billing");
-      const billingData = await readBillingData();
-      const participantRecords = billingData.data_tagihan.filter(
-        (record) => record.nomor_peserta === selectedParticipantId
-      );
+    if (selectedParticipantId) {
+      const { formatBillingDataForPrompt, getBillingDataByParticipant } = await import("@/lib/billing");
+      const participantRecords = getBillingDataByParticipant(selectedParticipantId);
 
       if (participantRecords.length > 0) {
-        const formattedRecords = participantRecords.map((r) =>
-          `Bulan ${r.bulan} ${r.tahun}: ${r.status_pembayaran} (Jatuh tempo: ${r.jatuh_tempo}, Jumlah: Rp${r.jumlah_iuran.toLocaleString()})${r.kanal_pembayaran ? `, Dibayar via: ${r.kanal_pembayaran}` : ""}`
-        ).join("\n");
-
-        const firstRecord = participantRecords[0];
-        billingContext = `Nama: ${firstRecord.nama_peserta}\nNomor Peserta: ${firstRecord.nomor_peserta}\n\nRiwayat Tagihan:\n${formattedRecords}`;
+        billingContext = formatBillingDataForPrompt(participantRecords);
       }
     }
 

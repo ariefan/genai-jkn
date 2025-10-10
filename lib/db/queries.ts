@@ -83,6 +83,9 @@ function checkDatabaseConnection() {
 export async function getUser(email: string): Promise<User[]> {
   try {
     const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
     return await database.select().from(user).where(eq(user.email, email));
   } catch (_error) {
     throw new ChatSDKError(
@@ -96,7 +99,11 @@ export async function createUser(email: string, password: string) {
   const hashedPassword = generateHashedPassword(password);
 
   try {
-    return await db.insert(user).values({ email, password: hashedPassword });
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    return await database.insert(user).values({ email, password: hashedPassword });
   } catch (_error) {
     throw new ChatSDKError("bad_request:database", "Failed to create user");
   }
@@ -107,7 +114,11 @@ export async function createGuestUser() {
   const password = generateHashedPassword(generateUUID());
 
   try {
-    return await db.insert(user).values({ email, password }).returning({
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    return await database.insert(user).values({ email, password }).returning({
       id: user.id,
       email: user.email,
     });
@@ -155,11 +166,16 @@ export async function saveChat({
 
 export async function deleteChatById({ id }: { id: string }) {
   try {
-    await db.delete(vote).where(eq(vote.chatId, id));
-    await db.delete(message).where(eq(message.chatId, id));
-    await db.delete(stream).where(eq(stream.chatId, id));
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
 
-    const [chatsDeleted] = await db
+    await database.delete(vote).where(eq(vote.chatId, id));
+    await database.delete(message).where(eq(message.chatId, id));
+    await database.delete(stream).where(eq(stream.chatId, id));
+
+    const [chatsDeleted] = await database
       .delete(chat)
       .where(eq(chat.id, id))
       .returning();
@@ -397,7 +413,11 @@ export async function saveDocument({
   userId: string;
 }) {
   try {
-    return await db
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    return await database
       .insert(document)
       .values({
         id,
@@ -415,7 +435,11 @@ export async function saveDocument({
 
 export async function getDocumentsById({ id }: { id: string }) {
   try {
-    const documents = await db
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    const documents = await database
       .select()
       .from(document)
       .where(eq(document.id, id))
@@ -432,7 +456,11 @@ export async function getDocumentsById({ id }: { id: string }) {
 
 export async function getDocumentById({ id }: { id: string }) {
   try {
-    const [selectedDocument] = await db
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    const [selectedDocument] = await database
       .select()
       .from(document)
       .where(eq(document.id, id))
@@ -455,7 +483,12 @@ export async function deleteDocumentsByIdAfterTimestamp({
   timestamp: Date;
 }) {
   try {
-    await db
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+
+    await database
       .delete(suggestion)
       .where(
         and(
@@ -464,7 +497,7 @@ export async function deleteDocumentsByIdAfterTimestamp({
         )
       );
 
-    return await db
+    return await database
       .delete(document)
       .where(and(eq(document.id, id), gt(document.createdAt, timestamp)))
       .returning();
@@ -482,7 +515,11 @@ export async function saveSuggestions({
   suggestions: Suggestion[];
 }) {
   try {
-    return await db.insert(suggestion).values(suggestions);
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    return await database.insert(suggestion).values(suggestions);
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
@@ -497,7 +534,11 @@ export async function getSuggestionsByDocumentId({
   documentId: string;
 }) {
   try {
-    return await db
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    return await database
       .select()
       .from(suggestion)
       .where(and(eq(suggestion.documentId, documentId)));
@@ -511,7 +552,11 @@ export async function getSuggestionsByDocumentId({
 
 export async function getMessageById({ id }: { id: string }) {
   try {
-    return await db.select().from(message).where(eq(message.id, id));
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    return await database.select().from(message).where(eq(message.id, id));
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
@@ -528,7 +573,12 @@ export async function deleteMessagesByChatIdAfterTimestamp({
   timestamp: Date;
 }) {
   try {
-    const messagesToDelete = await db
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+
+    const messagesToDelete = await database
       .select({ id: message.id })
       .from(message)
       .where(
@@ -540,13 +590,13 @@ export async function deleteMessagesByChatIdAfterTimestamp({
     );
 
     if (messageIds.length > 0) {
-      await db
+      await database
         .delete(vote)
         .where(
           and(eq(vote.chatId, chatId), inArray(vote.messageId, messageIds))
         );
 
-      return await db
+      return await database
         .delete(message)
         .where(
           and(eq(message.chatId, chatId), inArray(message.id, messageIds))
@@ -568,7 +618,11 @@ export async function updateChatVisiblityById({
   visibility: "private" | "public";
 }) {
   try {
-    return await db.update(chat).set({ visibility }).where(eq(chat.id, chatId));
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    return await database.update(chat).set({ visibility }).where(eq(chat.id, chatId));
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
@@ -586,7 +640,12 @@ export async function updateChatLastContextById({
   context: AppUsage;
 }) {
   try {
-    return await db
+    const database = checkDatabaseConnection();
+    if (!database) {
+      console.warn("Database unavailable, skipping lastContext update for chat", chatId);
+      return;
+    }
+    return await database
       .update(chat)
       .set({ lastContext: context })
       .where(eq(chat.id, chatId));
@@ -665,7 +724,11 @@ export async function createStreamId({
 
 export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
   try {
-    const streamIds = await db
+    const database = checkDatabaseConnection();
+    if (!database) {
+      throw new ChatSDKError("bad_request:database", "Database unavailable");
+    }
+    const streamIds = await database
       .select({ id: stream.id })
       .from(stream)
       .where(eq(stream.chatId, chatId))

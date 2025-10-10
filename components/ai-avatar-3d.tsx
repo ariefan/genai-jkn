@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { Canvas, useFrame, useLoader } from "@react-three/fiber";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 
@@ -13,132 +14,117 @@ interface AIAvatar3DProps {
   fullBackground?: boolean;
 }
 
-// 3D Avatar Model Component with breathing idle animation
+// Mixamo bone name mapping to Ready Player Me
+const MIXAMO_TO_RPM_BONE_MAP: { [key: string]: string } = {
+  'mixamorigHips': 'Hips',
+  'mixamorigSpine': 'Spine',
+  'mixamorigSpine1': 'Spine1',
+  'mixamorigSpine2': 'Spine2',
+  'mixamorigNeck': 'Neck',
+  'mixamorigHead': 'Head',
+  'mixamorigLeftShoulder': 'LeftShoulder',
+  'mixamorigRightShoulder': 'RightShoulder',
+  'mixamorigLeftArm': 'LeftArm',
+  'mixamorigRightArm': 'RightArm',
+  'mixamorigLeftForeArm': 'LeftForeArm',
+  'mixamorigRightForeArm': 'RightForeArm',
+  'mixamorigLeftHand': 'LeftHand',
+  'mixamorigRightHand': 'RightHand',
+  'mixamorigLeftUpLeg': 'LeftUpLeg',
+  'mixamorigRightUpLeg': 'RightUpLeg',
+  'mixamorigLeftLeg': 'LeftLeg',
+  'mixamorigRightLeg': 'RightLeg',
+  'mixamorigLeftFoot': 'LeftFoot',
+  'mixamorigRightFoot': 'RightFoot'
+};
+
+// 3D Avatar Model Component with Mixamo animation support
 function Avatar3DModel({ isSpeaking, isThinking }: { isSpeaking: boolean; isThinking: boolean }) {
   const modelRef = useRef<THREE.Group>(null);
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
-  const headBoneRef = useRef<THREE.Bone | null>(null);
-  const spineBoneRef = useRef<THREE.Bone | null>(null);
-  const neckBoneRef = useRef<THREE.Bone | null>(null);
-  const shoulderLeftRef = useRef<THREE.Bone | null>(null);
-  const shoulderRightRef = useRef<THREE.Bone | null>(null);
+  const [mixamoAnimation, setMixamoAnimation] = useState<THREE.AnimationClip | null>(null);
 
-  // Load female model and animation separately
+  // Load female model
   const femaleGltf = useLoader(GLTFLoader, "/data/female.glb");
-  const animationGltf = useLoader(GLTFLoader, "/data/breathing-idle.glb");
+
+  // Load Mixamo animation asynchronously
+  useEffect(() => {
+    const loader = new GLTFLoader();
+    loader.load(
+      '/data/_breathing-idle.glb',
+      (gltf) => {
+        if (gltf.animations.length > 0) {
+          setMixamoAnimation(gltf.animations[0]);
+          console.log('Mixamo animation loaded successfully');
+        }
+      },
+      undefined,
+      (error) => {
+        console.log('Animation file not found, will use procedural animation');
+      }
+    );
+  }, []);
 
   useEffect(() => {
-    if (femaleGltf && animationGltf) {
-      console.log('Female model loaded, applying breathing animation...');
-
-      // Find bones in female model for potential procedural animation
-      femaleGltf.scene.traverse((object: any) => {
-        if (object instanceof THREE.Bone || object.type === 'Bone') {
-          const boneName = object.name;
-
-          // Ready Player Me bone naming (case-sensitive)
-          if (boneName === 'Head' && !headBoneRef.current) {
-            headBoneRef.current = object as THREE.Bone;
-            console.log('Found head bone:', object.name);
-          } else if (boneName === 'Neck' && !neckBoneRef.current) {
-            neckBoneRef.current = object as THREE.Bone;
-            console.log('Found neck bone:', object.name);
-          } else if ((boneName === 'Spine' || boneName === 'Spine1' || boneName === 'Spine2') && !spineBoneRef.current) {
-            spineBoneRef.current = object as THREE.Bone;
-            console.log('Found spine bone:', object.name);
-          } else if (boneName === 'LeftShoulder' && !shoulderLeftRef.current) {
-            shoulderLeftRef.current = object as THREE.Bone;
-            console.log('Found left shoulder bone:', object.name);
-          } else if (boneName === 'RightShoulder' && !shoulderRightRef.current) {
-            shoulderRightRef.current = object as THREE.Bone;
-            console.log('Found right shoulder bone:', object.name);
-          }
-        }
-      });
+    if (femaleGltf) {
+      console.log('Female model loaded');
 
       // Set up animation mixer for female model
       mixerRef.current = new THREE.AnimationMixer(femaleGltf.scene);
 
-      // Try to apply animation from breathing-idle.glb to female model
-      if (animationGltf.animations.length > 0) {
-        const animation = animationGltf.animations[0];
-        console.log('Available animation tracks in breathing-idle.glb:', animation.tracks.length);
+      // If Mixamo animation is available, apply it with bone retargeting
+      if (mixamoAnimation) {
+        console.log('Applying Mixamo animation to Ready Player Me model');
 
-        // Create a bone map for the female model
-        const boneMap: { [key: string]: THREE.Object3D } = {};
-        femaleGltf.scene.traverse((object) => {
-          if (object instanceof THREE.Bone || object.type === 'Bone') {
-            boneMap[object.name] = object;
-          }
-        });
-
-        console.log('Available bones in female model:', Object.keys(boneMap));
-
-        // Try to apply animation with proper bone mapping
         try {
-          // Create a new animation clip that targets the female model bones
+          // Create bone map for the female model
+          const boneMap: { [key: string]: THREE.Object3D } = {};
+          femaleGltf.scene.traverse((object) => {
+            if (object instanceof THREE.Bone || object.type === 'Bone') {
+              boneMap[object.name] = object;
+            }
+          });
+
+          console.log('Ready Player Me bones found:', Object.keys(boneMap));
+
+          // Retarget animation tracks
           const retargetedTracks: THREE.KeyframeTrack[] = [];
 
-          animation.tracks.forEach((track) => {
+          mixamoAnimation.tracks.forEach((track) => {
             const trackName = track.name;
+            const parts = trackName.split('.');
+            const mixamoBoneName = parts[0];
+            const property = parts.slice(1).join('.');
 
-            // Handle mixamo bone naming (mixamorigHips.position -> Hips.position)
-            if (trackName.startsWith('mixamorig')) {
-              const mixamoBoneName = trackName.replace('mixamorig', '');
-              const property = trackName.split('.').slice(1).join('.');
+            // Map Mixamo bone to Ready Player Me bone
+            const rpmBoneName = MIXAMO_TO_RPM_BONE_MAP[mixamoBoneName];
 
-              // Map common bone names
-              const boneNameMapping: { [key: string]: string } = {
-                'Hips': 'Hips',
-                'Spine': 'Spine',
-                'Spine1': 'Spine1',
-                'Spine2': 'Spine2',
-                'Neck': 'Neck',
-                'Head': 'Head',
-                'LeftShoulder': 'LeftShoulder',
-                'RightShoulder': 'RightShoulder',
-                'LeftArm': 'LeftArm',
-                'RightArm': 'RightArm',
-                'LeftForeArm': 'LeftForeArm',
-                'RightForeArm': 'RightForeArm'
-              };
-
-              const femaleBoneName = boneNameMapping[mixamoBoneName];
-
-              if (femaleBoneName && boneMap[femaleBoneName]) {
-                // Create a new track that targets the female model bone
-                const newTrackName = `${femaleBoneName}.${property}`;
-                const newTrack = track.clone();
-                newTrack.name = newTrackName;
-                retargetedTracks.push(newTrack);
-              }
-            } else {
-              // If track doesn't start with mixamorig, try to use it directly
-              const parts = trackName.split('.');
-              const boneName = parts[0];
-              const property = parts.slice(1).join('.');
-
-              if (boneMap[boneName]) {
-                retargetedTracks.push(track);
-              }
+            if (rpmBoneName && boneMap[rpmBoneName]) {
+              const newTrackName = `${rpmBoneName}.${property}`;
+              const newTrack = track.clone();
+              newTrack.name = newTrackName;
+              retargetedTracks.push(newTrack);
             }
           });
 
           if (retargetedTracks.length > 0) {
-            const retargetedClip = new THREE.AnimationClip('breathing', animation.duration, retargetedTracks);
+            const retargetedClip = new THREE.AnimationClip(
+              'mixamoRetargeted',
+              mixamoAnimation.duration,
+              retargetedTracks
+            );
             const action = mixerRef.current.clipAction(retargetedClip);
             action.play();
-            console.log(`Successfully applied breathing animation with ${retargetedTracks.length} tracks to female model`);
+            console.log(`Successfully retargeted ${retargetedTracks.length} animation tracks`);
           } else {
-            console.log('No tracks could be retargeted, female model will be static');
+            console.log('No tracks could be retargeted, falling back to procedural animation');
           }
         } catch (error) {
-          console.error('Error applying animation:', error);
-          console.log('Female model will be displayed without animation');
+          console.error('Error retargeting Mixamo animation:', error);
         }
       }
     }
-  }, [femaleGltf, animationGltf]);
+  }, [femaleGltf, mixamoAnimation]);
 
   // Update animation mixer on each frame
   useFrame((_, delta) => {
@@ -305,7 +291,7 @@ export function AIAvatar3D({
             {[...Array(8)].map((_, i) => (
               <div
                 key={i}
-                className="absolute w-2 h-2 bg-blue-400/40 rounded-full"
+                className="absolute w-2 h-2 bg-blue-400/40 dark:bg-blue-300/40 rounded-full"
                 style={{
                   left: `${15 + i * 10}%`,
                   top: `${25 + (i % 3) * 20}%`,
@@ -320,9 +306,9 @@ export function AIAvatar3D({
           {isThinking && !isSpeaking && (
             <div className="absolute bottom-10 left-1/2 -translate-x-1/2 pointer-events-none">
               <div className="flex gap-2">
-                <div className="h-3 w-3 animate-bounce rounded-full bg-blue-500/70" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
-                <div className="h-3 w-3 animate-bounce rounded-full bg-purple-500/70" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
-                <div className="h-3 w-3 animate-bounce rounded-full bg-pink-500/70" style={{ animationDelay: "400ms", animationDuration: "1s" }} />
+                <div className="h-3 w-3 animate-bounce rounded-full bg-blue-500/70 dark:bg-blue-400/70" style={{ animationDelay: "0ms", animationDuration: "1s" }} />
+                <div className="h-3 w-3 animate-bounce rounded-full bg-purple-500/70 dark:bg-purple-400/70" style={{ animationDelay: "200ms", animationDuration: "1s" }} />
+                <div className="h-3 w-3 animate-bounce rounded-full bg-pink-500/70 dark:bg-pink-400/70" style={{ animationDelay: "400ms", animationDuration: "1s" }} />
               </div>
             </div>
           )}
@@ -334,7 +320,7 @@ export function AIAvatar3D({
                 {[...Array(7)].map((_, i) => (
                   <div
                     key={i}
-                    className="w-1.5 animate-pulse rounded-full bg-green-500"
+                    className="w-1.5 animate-pulse rounded-full bg-green-500 dark:bg-green-400"
                     style={{
                       height: `${20 + Math.sin(i * 0.5) * 15}px`,
                       animationDelay: `${i * 100}ms`,
@@ -365,19 +351,19 @@ export function AIAvatar3D({
 
       {/* Speaking indicator */}
       {isSpeaking && (
-        <div className="absolute bottom-0 right-0 flex gap-0.5 rounded-tl-lg bg-green-500/30 p-1 backdrop-blur-sm">
-          <div className="h-2 w-0.5 animate-pulse bg-green-500" style={{ animationDelay: "0ms", animationDuration: "600ms" }} />
-          <div className="h-2 w-0.5 animate-pulse bg-green-500" style={{ animationDelay: "200ms", animationDuration: "600ms" }} />
-          <div className="h-2 w-0.5 animate-pulse bg-green-500" style={{ animationDelay: "400ms", animationDuration: "600ms" }} />
+        <div className="absolute bottom-0 right-0 flex gap-0.5 rounded-tl-lg bg-green-500/30 p-1 backdrop-blur-sm dark:bg-green-400/30">
+          <div className="h-2 w-0.5 animate-pulse bg-green-500 dark:bg-green-400" style={{ animationDelay: "0ms", animationDuration: "600ms" }} />
+          <div className="h-2 w-0.5 animate-pulse bg-green-500 dark:bg-green-400" style={{ animationDelay: "200ms", animationDuration: "600ms" }} />
+          <div className="h-2 w-0.5 animate-pulse bg-green-500 dark:bg-green-400" style={{ animationDelay: "400ms", animationDuration: "600ms" }} />
         </div>
       )}
 
       {/* Thinking indicator */}
       {isThinking && !isSpeaking && (
-        <div className="absolute bottom-0 right-0 flex gap-0.5 rounded-tl-lg bg-blue-500/30 p-1 backdrop-blur-sm">
-          <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500" style={{ animationDelay: "0ms" }} />
-          <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500" style={{ animationDelay: "150ms" }} />
-          <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500" style={{ animationDelay: "300ms" }} />
+        <div className="absolute bottom-0 right-0 flex gap-0.5 rounded-tl-lg bg-blue-500/30 p-1 backdrop-blur-sm dark:bg-blue-400/30">
+          <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 dark:bg-blue-400" style={{ animationDelay: "0ms" }} />
+          <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 dark:bg-blue-400" style={{ animationDelay: "150ms" }} />
+          <div className="h-1.5 w-1.5 animate-bounce rounded-full bg-blue-500 dark:bg-blue-400" style={{ animationDelay: "300ms" }} />
         </div>
       )}
     </div>

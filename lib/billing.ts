@@ -94,3 +94,58 @@ export function getParticipantSummaries(
     a.namaPeserta.localeCompare(b.namaPeserta, "id-ID")
   );
 }
+
+export function getBillingDataByParticipant(nomorPeserta: string): BillingRecord[] {
+  const billingData = readBillingDataSync();
+  return billingData.data_tagihan.filter(
+    (record) => record.nomor_peserta === nomorPeserta
+  );
+}
+
+export function formatBillingDataForPrompt(records: BillingRecord[]): string {
+  if (records.length === 0) {
+    return "Tidak ada data tagihan ditemukan untuk peserta ini.";
+  }
+
+  const firstRecord = records[0];
+
+  // Format participant info
+  let result = `Nama: ${firstRecord.nama_peserta}\nNomor Peserta: ${firstRecord.nomor_peserta}\nTanggal Lahir: ${firstRecord.tanggal_lahir}\nJenis Kelamin: ${firstRecord.jenis_kelamin}\nKota Domisili: ${firstRecord.kota_domisili}\n\n`;
+
+  // Format billing records
+  result += "Riwayat Tagihan:\n";
+  records.forEach((record) => {
+    const status = record.status_pembayaran === "lunas" ? "✅ LUNAS" : "❌ BELUM BAYAR";
+    const paymentInfo = record.kanal_pembayaran
+      ? ` (Dibayar via: ${record.kanal_pembayaran})`
+      : record.tanggal_pembayaran
+      ? ` (Dibayar: ${record.tanggal_pembayaran})`
+      : "";
+
+    result += `• ${record.bulan} ${record.tahun}: ${status} - Jatuh tempo: ${record.jatuh_tempo}, Jumlah: Rp${record.jumlah_iuran.toLocaleString("id-ID")}${paymentInfo}\n`;
+  });
+
+  // Summary
+  const unpaidRecords = records.filter(r => r.status_pembayaran !== "lunas");
+  const totalUnpaid = unpaidRecords.reduce((sum, r) => sum + r.jumlah_iuran, 0);
+
+  if (unpaidRecords.length > 0) {
+    result += `\n\n⚠️ PERHATIAN:\n`;
+    result += `• Ada ${unpaidRecords.length} bulan belum dibayar\n`;
+    result += `• Total tunggakan: Rp${totalUnpaid.toLocaleString("id-ID")}\n`;
+
+    // Show next due date
+    const nextDue = unpaidRecords
+      .map(r => new Date(r.jatuh_tempo))
+      .filter(d => d >= new Date())
+      .sort((a, b) => a.getTime() - b.getTime())[0];
+
+    if (nextDue) {
+      result += `• Jatuh tempo terdekat: ${nextDue.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}\n`;
+    }
+  } else {
+    result += "\n\n✅ Semua tagihan telah lunas.";
+  }
+
+  return result;
+}

@@ -50,7 +50,7 @@ export const myProvider = isTestEnvironment
         "title-model": openRouter.chat(
           "mistralai/mistral-7b-instruct:deepinfra/bf16"
         ),
-        "artifact-model": openRouter.chat("openai/gpt-4.1-mini"),
+        "artifact-model": openRouter.chat("openai/gpt-4o-mini"),
         "chat-model-mistral-7b":
           openRouter.chat("mistralai/mistral-7b-instruct:deepinfra/bf16"),
         "chat-model-gemma-3n-e2b":

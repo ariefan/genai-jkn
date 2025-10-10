@@ -73,16 +73,20 @@ export const systemPrompt = ({
 
   const instructionPrompt = getInstructionPrompt();
 
-  let contextPrompt = "";
+  // Replace [DATA] placeholder with billing context
+  let finalPrompt = instructionPrompt;
   if (billingContext) {
-    contextPrompt = `\n\n## DATA TAGIHAN PESERTA\nBerikut adalah data tagihan untuk peserta yang dipilih:\n${billingContext}\n\nGunakan data di atas untuk menjawab pertanyaan peserta tentang status pembayaran mereka.`;
+    finalPrompt = instructionPrompt.replace("[DATA]", billingContext);
+  } else {
+    // Remove the [DATA] section if no billing context
+    finalPrompt = instructionPrompt.replace("Data tagihan peserta BPJS Kesehatan:\n[DATA]", "");
   }
 
   if (selectedChatModel === "chat-model-reasoning") {
-    return `${instructionPrompt}${contextPrompt}\n\n${requestPrompt}`;
+    return `${finalPrompt}\n\n${requestPrompt}`;
   }
 
-  return `${instructionPrompt}${contextPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
+  return `${finalPrompt}\n\n${requestPrompt}\n\n${artifactsPrompt}`;
 };
 
 export const codePrompt = `

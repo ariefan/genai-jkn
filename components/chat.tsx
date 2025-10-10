@@ -265,11 +265,9 @@ export function Chat({
       <Artifact
         attachments={attachments}
         chatId={id}
-        chatError={chatError}
         input={input}
         isReadonly={isReadonly}
         messages={messages}
-        onClearError={() => setChatError(null)}
         regenerate={regenerate}
         selectedModelId={currentModelId}
         selectedVisibilityType={visibilityType}
